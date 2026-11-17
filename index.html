@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAID-Shield</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Sprite dino pixel -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="dino" viewBox="0 0 16 14">
+    <rect x="6" y="0" width="8" height="5" fill="currentColor"/>
+    <rect x="8" y="1" width="1" height="1" fill="#fdf6e3"/>
+    <rect x="6" y="5" width="5" height="1" fill="currentColor"/>
+    <rect x="4" y="5" width="3" height="5" fill="currentColor"/>
+    <rect x="6" y="6" width="6" height="4" fill="currentColor"/>
+    <rect x="10" y="7" width="2" height="1" fill="currentColor"/>
+    <rect x="1" y="7" width="3" height="2" fill="currentColor"/>
+    <rect x="0" y="6" width="1" height="2" fill="currentColor"/>
+    <rect x="5" y="10" width="2" height="3" fill="currentColor"/>
+    <rect x="8" y="10" width="2" height="3" fill="currentColor"/>
+  </symbol>
+</svg>
+
+<!-- ============ LAYAR START ============ -->
+<section id="startScreen" class="screen active">
+  <div class="bg-shape s-purple"></div>
+  <div class="bg-shape s-pink"></div>
+  <div class="bg-shape s-mint"></div>
+  <div class="bg-shape s-yellow"></div>
+  <svg class="dino-deco"><use href="#dino"/></svg>
+
+  <div class="mini-win mw-loading">
+    <div class="titlebar yellow"><i></i><i></i><i></i><span>LOADING...</span></div>
+    <div class="mw-body"><small>Memuat disk array...</small><div class="bar"><b></b></div></div>
+  </div>
+  <div class="mini-win mw-error">
+    <div class="titlebar orange"><i></i><i></i><i></i><span>SYSTEM ERROR</span></div>
+    <div class="mw-body"><span>⚠ Disk 2 tidak merespons!</span><div class="fake-btn">OK</div></div>
+  </div>
+  <div class="mini-win mw-ready">
+    <div class="titlebar mint"><i></i><i></i><i></i><span>ARE YOU READY?</span></div>
+    <div class="mw-body row"><div class="pill green">YES</div><div class="pill pink">NO</div></div>
+  </div>
+
+  <div class="win main-win">
+    <div class="titlebar yellow"><i></i><i></i><i></i><span>RAID-SHIELD.EXE</span></div>
+    <div class="main-body">
+      <h1 class="logo">RAID-Shield</h1>
+      <div class="tagline">Bertahan 30 Hari sebagai SysAdmin</div>
+      <div class="loadrow"><small>loading</small><div class="bar wide"><b></b></div></div>
+      <button class="btn big blue" id="btnStart">MULAI GAME</button>
+      <div class="row">
+        <button class="btn yellow" id="btnHowStart">CARA BERMAIN</button>
+        <button class="btn purple" id="btnSettings">PENGATURAN</button>
+      </div>
+    </div>
+  </div>
+  <p class="boot-hint">&gt; press MULAI GAME to boot server<span class="cursor">█</span></p>
+</section>
+
+<!-- ============ LAYAR GAME ============ -->
+<section id="gameScreen" class="screen">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon"><svg><use href="#dino"/></svg></div>
+      <h2>RAID-Shield</h2>
+    </div>
+    <div class="chip status" id="statusChip"><span class="dot" id="statusDot"></span><span id="statusText">STATUS: OPTIMAL</span></div>
+    <div class="chip day yellow"><span>📅</span>
+      <div><span id="dayText">HARI 1/30</span><div class="mini-bar"><b id="dayBar"></b></div></div>
+    </div>
+    <div class="chip money mint"><span class="coin"></span><span id="moneyText">POIN $1500</span></div>
+    <div class="spacer"></div>
+    <button class="btn small purple" id="btnPause">❚❚ PAUSE</button>
+    <button class="btn small yellow sq" id="btnHelp">?</button>
+    <button class="toggle" id="btnDark" aria-label="Mode gelap"><span class="knob"></span></button>
+  </header>
+
+  <main class="layout">
+    <!-- Panel kontrol -->
+    <div class="win ctrl">
+      <div class="titlebar purple"><i></i><i></i><i></i><span>PANEL KONTROL SIMULASI</span><span class="floppy">💾</span></div>
+      <div class="ctrl-body">
+        <div class="label-row"><label for="dataInput">Input Data</label><span class="counter" id="counter">0/12</span></div>
+        <input id="dataInput" maxlength="12" placeholder="Ketik: DATA" autocomplete="off" spellcheck="false">
+
+        <div class="label-row"><label>Pemilih Arsitektur</label></div>
+        <div class="raid-grid" id="raidGrid">
+          <button class="raid-btn" data-raid="0"><b>RAID 0</b><small>Striping</small></button>
+          <button class="raid-btn" data-raid="1"><b>RAID 1</b><small>Mirroring</small></button>
+          <button class="raid-btn" data-raid="5"><b>RAID 5</b><small>Parity</small></button>
+          <button class="raid-btn" data-raid="10"><b>RAID 10</b><small>Mirror+Stripe</small></button>
+        </div>
+
+        <div class="label-row"><label>Action Center</label></div>
+        <button class="btn action blue" id="btnStore" disabled>Proses Penyimpanan</button>
+        <button class="btn action green" id="btnRebuild" disabled>Jalankan Rebuild Data</button>
+        <p class="note" id="actionNote">Rebuild aktif setelah disk rusak dan diganti.</p>
+      </div>
+    </div>
+
+    <!-- Visualisasi disk -->
+    <div class="win viz">
+      <div class="titlebar mint"><i></i><i></i><i></i><span>PANGGUNG VISUALISASI DISK</span><span class="tag purple" id="vizTag" hidden>STORED</span></div>
+      <div class="viz-body">
+        <div class="bus-wrap"><div class="bus-label">INPUT PANEL KONTROL <b id="busData">- - - -</b></div><svg class="bus-lines" id="busLines" viewBox="0 0 400 54" preserveAspectRatio="none" aria-hidden="true"><g class="bus-branch"><line x1="200" y1="0" x2="50" y2="46"/><polygon points="44,42 56,42 50,54"/></g><g class="bus-branch"><line x1="200" y1="0" x2="150" y2="46"/><polygon points="144,42 156,42 150,54"/></g><g class="bus-branch"><line x1="200" y1="0" x2="250" y2="46"/><polygon points="244,42 256,42 250,54"/></g><g class="bus-branch"><line x1="200" y1="0" x2="350" y2="46"/><polygon points="344,42 356,42 350,54"/></g></svg></div>
+        <div class="disks" id="disks"></div>
+        <div class="viz-hint" id="vizHint">Pilih arsitektur RAID di panel kiri untuk memulai</div>
+      </div>
+    </div>
+
+    <!-- Terminal -->
+    <div class="win term-win">
+      <div class="titlebar yellow"><i></i><i></i><i></i><span>TERMINAL PARITY</span><small>BASH</small></div>
+      <div class="terminal" id="terminal"></div>
+    </div>
+
+    <!-- Efisiensi -->
+    <div class="win eff-win">
+      <div class="titlebar pink"><i></i><i></i><i></i><span>EFISIENSI PENYIMPANAN</span></div>
+      <div class="eff-body">
+        <div class="donut" id="donut"><span id="donutText">00%</span></div>
+        <div class="legend">
+          <div><i class="sw green"></i>Kapasitas Tersedia <b id="legCap">100%</b></div>
+          <div><i class="sw orange"></i>Redundansi/Terbuang <b id="legRed">0%</b></div>
+          <div class="tag yellow" id="effTag">PILIH RAID</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</section>
+
+<!-- ============ MODAL ============ -->
+<div class="overlay" id="ovHelp" hidden>
+  <div class="win modal help">
+    <div class="titlebar yellow"><i></i><i></i><i></i><span>CARA_BERMAIN.EXE</span></div>
+    <div class="modal-body">
+      <h2><svg class="inl-dino"><use href="#dino"/></svg> CARA BERMAIN <span class="tag purple">30 HARI</span></h2>
+      <ul class="rules">
+        <li>🎯 <span><b>Tujuanmu:</b> Bertahan hidup sebagai SysAdmin selama <b>"30 Hari"</b> tanpa membiarkan data server hancur.</span></li>
+        <li>🪙 <span>Kamu punya modal awal <b>$1500</b>. Pilih tipe RAID yang menurutmu paling efisien.</span></li>
+        <li>💰 <span>Setiap hari yang berlalu, server akan menghasilkan uang.</span></li>
+        <li>⚠️ <span><b>BENCANA:</b> Sewaktu-waktu, Hard Disk bisa terbakar secara acak! Semakin lama, risiko semakin besar.</span></li>
+      </ul>
+      <div class="two-col">
+        <div class="box">
+          <span class="tag blue">Cara Menyelamatkan Data</span>
+          <ol>
+            <li>Saat disk rusak (merah), klik "Beli Pengganti ($100)".</li>
+            <li>Setelah disk baru dipasang, klik tombol besar "Rebuild Data" di kiri bawah.</li>
+            <li>Tunggu 3 detik. Jangan sampai disk lain rusak saat rebuild berlangsung!</li>
+          </ol>
+        </div>
+        <div class="box">
+          <span class="tag orange">⚠ Peringatan Kritis (Game Over jika)</span>
+          <p><i class="sw red"></i><b>RAID 0:</b> Jika 1 disk saja rusak = LANGSUNG GAME OVER.</p>
+          <p><i class="sw pink"></i><b>RAID 5:</b> Hanya tahan 1 disk rusak. Jika 2 disk rusak bersamaan = GAME OVER.</p>
+          <p><i class="sw purple"></i><b>RAID 1 &amp; 10:</b> Tahan 2 disk rusak. Jika 3 disk rusak bersamaan = GAME OVER (Disederhanakan untuk game ini).</p>
+          <p><i class="sw yellow"></i>Kamu kehabisan uang dan tidak bisa membeli disk pengganti ($100)!</p>
+        </div>
+      </div>
+      <button class="btn big green" id="btnHelpOk">SAYA MENGERTI</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ovSettings" hidden>
+  <div class="win modal small">
+    <div class="titlebar purple"><i></i><i></i><i></i><span>PENGATURAN.EXE</span></div>
+    <div class="modal-body">
+      <h2>PENGATURAN</h2>
+      <p class="set-label">Kecepatan hari</p>
+      <div class="row" id="speedRow">
+        <button class="btn yellow" data-ms="3500">SANTAI</button>
+        <button class="btn yellow active" data-ms="2500">NORMAL</button>
+        <button class="btn yellow" data-ms="1500">CEPAT</button>
+      </div>
+      <p class="set-label">Tampilan</p>
+      <button class="btn mint" id="btnDark2">GANTI MODE TERANG/GELAP</button>
+      <button class="btn big green" id="btnSetOk">SIMPAN</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ovOver" hidden>
+  <div class="win modal result">
+    <div class="tag red float-tag">DATA LOST</div>
+    <div class="titlebar orange"><i></i><i></i><i></i><span>GAME_OVER.EXE</span></div>
+    <div class="result-head orange"><div class="brand-icon"><svg><use href="#dino"/></svg><span class="x">✖</span></div><h1>GAME OVER</h1></div>
+    <div class="modal-body">
+      <div class="reason" id="overReason"></div>
+      <div class="stat mint"><span>Bertahan sampai</span><b id="overDay"></b></div>
+      <div class="stat yellow"><span>Poin akhir</span><b id="overPts"></b></div>
+      <div class="stat purple"><span>Tipe RAID</span><b id="overRaid"></b></div>
+      <div class="row">
+        <button class="btn green" id="btnRetry">COBA LAGI</button>
+        <button class="btn cream" id="btnMenu1">MENU UTAMA</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ovWin" hidden>
+  <div class="win modal result">
+    <div class="tag yellow float-tag">SYSDMIN LEGEND</div>
+    <div class="titlebar green"><i></i><i></i><i></i><span>YOU_WIN.EXE</span></div>
+    <div class="result-head green"><h1>YOU SURVIVED<br>30 DAYS!</h1></div>
+    <div class="modal-body">
+      <div class="stars" id="stars"></div>
+      <div class="stat yellow"><span id="winRaidLbl">Poin Akhir</span><b id="winPts"></b></div>
+      <div class="stat mint"><span>Bonus Bertahan</span><b id="winBonus"></b></div>
+      <div class="stat purple"><span>Total Skor</span><b id="winTotal"></b></div>
+      <div class="row">
+        <button class="btn blue" id="btnAgain">MAIN LAGI</button>
+        <button class="btn cream" id="btnMenu2">MENU UTAMA</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="confetti"></div>
+<script src="script.js"></script>
+</body>
+</html>
