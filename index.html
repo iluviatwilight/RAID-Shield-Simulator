@@ -10,7 +10,6 @@
 </head>
 <body>
 
-<!-- Sprite dino pixel -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="dino" viewBox="0 0 16 14">
     <rect x="6" y="0" width="8" height="5" fill="currentColor"/>
@@ -26,13 +25,13 @@
   </symbol>
 </svg>
 
-<!-- ============ LAYAR START ============ -->
 <section id="startScreen" class="screen active">
   <div class="bg-shape s-purple"></div>
   <div class="bg-shape s-pink"></div>
   <div class="bg-shape s-mint"></div>
   <div class="bg-shape s-yellow"></div>
   <svg class="dino-deco"><use href="#dino"/></svg>
+  <svg class="dino-run" aria-hidden="true"><use href="#dino"/></svg>
 
   <div class="mini-win mw-loading">
     <div class="titlebar yellow"><i></i><i></i><i></i><span>LOADING...</span></div>
@@ -50,20 +49,25 @@
   <div class="win main-win">
     <div class="titlebar yellow"><i></i><i></i><i></i><span>RAID-SHIELD.EXE</span></div>
     <div class="main-body">
-      <h1 class="logo">RAID-Shield</h1>
+      <h1 class="logo">RAID-SHIELD</h1>
       <div class="tagline">Bertahan 30 Hari sebagai SysAdmin</div>
       <div class="loadrow"><small>loading</small><div class="bar wide"><b></b></div></div>
       <button class="btn big blue" id="btnStart">MULAI GAME</button>
+      <div class="mode-grid">
+        <button class="btn mint" id="btnRescue" title="Latihan XOR parity RAID 5">🧩 XOR RESCUE<small>solo</small></button>
+        <button class="btn pink" id="btnDuel" title="Mabar 2 pemain">👥 XOR DUEL<small>2 pemain</small></button>
+        <button class="btn yellow" id="btnTour" title="Turnamen bergiliran">🏆 TURNAMEN<small>2-6 pemain</small></button>
+      </div>
       <div class="row">
         <button class="btn yellow" id="btnHowStart">CARA BERMAIN</button>
         <button class="btn purple" id="btnSettings">PENGATURAN</button>
       </div>
+      <div class="tag yellow" id="bestTag" hidden></div>
     </div>
   </div>
   <p class="boot-hint">&gt; press MULAI GAME to boot server<span class="cursor">█</span></p>
 </section>
 
-<!-- ============ LAYAR GAME ============ -->
 <section id="gameScreen" class="screen">
   <header class="topbar">
     <div class="brand">
@@ -82,7 +86,6 @@
   </header>
 
   <main class="layout">
-    <!-- Panel kontrol -->
     <div class="win ctrl">
       <div class="titlebar purple"><i></i><i></i><i></i><span>PANEL KONTROL SIMULASI</span><span class="floppy">💾</span></div>
       <div class="ctrl-body">
@@ -100,11 +103,12 @@
         <div class="label-row"><label>Action Center</label></div>
         <button class="btn action blue" id="btnStore" disabled>Proses Penyimpanan</button>
         <button class="btn action green" id="btnRebuild" disabled>Jalankan Rebuild Data</button>
+        <button class="btn action orange" id="btnFail" disabled>💥 Simulasikan Disk Rusak</button>
+        <button class="btn action mint" id="btnBackup" disabled>💾 Buat Backup ($150)</button>
         <p class="note" id="actionNote">Rebuild aktif setelah disk rusak dan diganti.</p>
       </div>
     </div>
 
-    <!-- Visualisasi disk -->
     <div class="win viz">
       <div class="titlebar mint"><i></i><i></i><i></i><span>PANGGUNG VISUALISASI DISK</span><span class="tag purple" id="vizTag" hidden>STORED</span></div>
       <div class="viz-body">
@@ -114,13 +118,11 @@
       </div>
     </div>
 
-    <!-- Terminal -->
     <div class="win term-win">
       <div class="titlebar yellow"><i></i><i></i><i></i><span>TERMINAL PARITY</span><small>BASH</small></div>
       <div class="terminal" id="terminal"></div>
     </div>
 
-    <!-- Efisiensi -->
     <div class="win eff-win">
       <div class="titlebar pink"><i></i><i></i><i></i><span>EFISIENSI PENYIMPANAN</span></div>
       <div class="eff-body">
@@ -131,11 +133,109 @@
           <div class="tag yellow" id="effTag">PILIH RAID</div>
         </div>
       </div>
+      <div class="raid-info" id="raidInfo"></div>
     </div>
   </main>
 </section>
 
-<!-- ============ MODAL ============ -->
+<section id="rescueScreen" class="screen">
+  <header class="topbar">
+    <div class="brand"><div class="brand-icon"><svg><use href="#dino"/></svg></div><h2>XOR Rescue</h2></div>
+    <div class="chip yellow">RONDE <span id="rsRound">1/8</span></div>
+    <div class="chip mint">SKOR <span id="rsScore">0</span></div>
+    <div class="chip pink"><span id="rsLives"></span></div>
+    <div class="chip purple"><span id="rsStreak">STREAK x0</span></div>
+    <div class="spacer"></div>
+    <button class="btn small purple" id="rsBack">← MENU</button>
+  </header>
+  <main class="rs-wrap">
+    <div class="win">
+      <div class="titlebar mint"><i></i><i></i><i></i><span>RAID5_RECOVERY.EXE</span></div>
+      <div class="rs-body">
+        <p class="rs-q">Satu disk dalam stripe RAID 5 hancur! Pulihkan isinya dengan <b>XOR</b> ketiga disk yang selamat. Klik kotak di baris disk yang hancur untuk membalik bit 0/1.</p>
+        <div class="rs-rule">Aturan per kolom: jumlah angka 1 <b>ganjil → 1</b>, <b>genap → 0</b>.</div>
+        <div class="mini-bar rs-time"><b id="rsTime"></b></div>
+        <div id="rsBoard" class="rs-board"></div>
+        <div class="rs-prev" id="rsPrev"></div>
+        <div class="row"><button class="btn yellow" id="rsHint">💡 PETUNJUK (poin -50%)</button><button class="btn green" id="rsCheck">CEK JAWABAN ✔</button></div>
+        <div class="rs-msg" id="rsMsg"></div>
+      </div>
+    </div>
+  </main>
+</section>
+<div class="overlay" id="ovRescue" hidden>
+  <div class="win modal result">
+    <div class="tag yellow float-tag" id="rsEndRank">RANK</div>
+    <div class="titlebar mint"><i></i><i></i><i></i><span>RESCUE_RESULT.EXE</span></div>
+    <div class="result-head mint"><h1 id="rsEndTitle">DATA SELAMAT!</h1></div>
+    <div class="modal-body">
+      <div class="stat yellow"><span>Skor</span><b id="rsEndScore"></b></div>
+      <div class="stat purple"><span>Ronde</span><b id="rsEndRound"></b></div>
+      <div class="stat mint"><span>Rekor</span><b id="rsEndBest"></b></div>
+      <div class="row"><button class="btn green" id="rsAgain">MAIN LAGI</button><button class="btn cream" id="rsMenu">MENU UTAMA</button></div>
+    </div>
+  </div>
+</div>
+
+<section id="duelScreen" class="screen">
+  <header class="topbar">
+    <div class="brand"><div class="brand-icon"><svg><use href="#dino"/></svg></div><h2>XOR Duel</h2></div>
+    <div class="chip yellow">RONDE <span id="duRound">1</span></div>
+    <div class="spacer"></div>
+    <button class="btn small purple" id="duBack">← MENU</button>
+  </header>
+  <main class="rs-wrap du-wrap">
+    <div class="win">
+      <div class="titlebar pink"><i></i><i></i><i></i><span>XOR_DUEL.EXE</span></div>
+      <div class="rs-body">
+        <p class="rs-q" id="duQ"></p>
+        <div class="mini-bar rs-time"><b id="duTime"></b></div>
+        <div id="duPuzzle"></div>
+        <div class="du-players" id="duPlayers"></div>
+        <div class="rs-msg" id="duMsg"></div>
+      </div>
+    </div>
+  </main>
+  <div class="du-count" id="duCount" hidden></div>
+</section>
+<div class="overlay" id="ovDuel" hidden>
+  <div class="win modal result">
+    <div class="tag yellow float-tag" id="duEndRank">JUARA</div>
+    <div class="titlebar pink"><i></i><i></i><i></i><span>DUEL_RESULT.EXE</span></div>
+    <div class="result-head pink"><h1 id="duEndTitle">PLAYER 1 MENANG!</h1></div>
+    <div class="modal-body">
+      <div class="stat yellow"><span>Skor akhir</span><b id="duEndScore"></b></div>
+      <div class="stat mint"><span>Ronde dimainkan</span><b id="duEndRound"></b></div>
+      <div class="row"><button class="btn green" id="duAgain">TANDING LAGI</button><button class="btn cream" id="duMenu">MENU UTAMA</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ovTour" hidden>
+  <div class="win modal small">
+    <div class="titlebar yellow"><i></i><i></i><i></i><span>TURNAMEN.EXE</span></div>
+    <div class="modal-body">
+      <h2>TURNAMEN</h2>
+      <p class="set-label">Isi 2-6 nama. Main bergiliran di satu laptop, soal SAMA untuk semua!</p>
+      <div id="tourNames"></div>
+      <button class="btn big green" id="tourGo">MULAI TURNAMEN</button>
+      <button class="btn cream" id="tourCancel">BATAL</button>
+    </div>
+  </div>
+</div>
+<div class="du-count" id="turnSplash" hidden></div>
+<div class="overlay" id="ovBoard" hidden>
+  <div class="win modal result">
+    <div class="tag yellow float-tag">PAPAN PERINGKAT</div>
+    <div class="titlebar yellow"><i></i><i></i><i></i><span>LEADERBOARD.EXE</span></div>
+    <div class="modal-body">
+      <div class="podium" id="podium"></div>
+      <div id="boardList" class="board-list"></div>
+      <div class="row"><button class="btn green" id="tourAgain">MAIN LAGI</button><button class="btn cream" id="tourMenu">MENU UTAMA</button></div>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="ovHelp" hidden>
   <div class="win modal help">
     <div class="titlebar yellow"><i></i><i></i><i></i><span>CARA_BERMAIN.EXE</span></div>
@@ -144,8 +244,11 @@
       <ul class="rules">
         <li>🎯 <span><b>Tujuanmu:</b> Bertahan hidup sebagai SysAdmin selama <b>"30 Hari"</b> tanpa membiarkan data server hancur.</span></li>
         <li>🪙 <span>Kamu punya modal awal <b>$1500</b>. Pilih tipe RAID yang menurutmu paling efisien.</span></li>
-        <li>💰 <span>Setiap hari yang berlalu, server akan menghasilkan uang.</span></li>
+        <li>💰 <span>Setiap hari server menghasilkan uang: makin cepat tipe RAID-nya, makin besar penghasilannya (RAID 0 terbesar, RAID 1 terkecil).</span></li>
         <li>⚠️ <span><b>BENCANA:</b> Sewaktu-waktu, Hard Disk bisa terbakar secara acak! Semakin lama, risiko semakin besar.</span></li>
+        <li>🧪 <span><b>Untuk presentasi:</b> matikan "Bencana acak" di Pengaturan, lalu pakai tombol <b>Simulasikan Disk Rusak</b> untuk memperagakan pemulihan data secara terkendali.</span></li>
+        <li>💾 <span><b>Backup:</b> RAID bukan pengganti backup! Beli backup ($150) sebagai jaring pengaman: jika data hilang kamu dipulihkan (denda $200) dan game lanjut. Berlaku sekali.</span></li>
+        <li>🎲 <span><b>Kejadian acak:</b> klien bonus, denda audit, atau ruang server panas (risiko disk rusak 2x).</span></li>
       </ul>
       <div class="two-col">
         <div class="box">
@@ -160,7 +263,8 @@
           <span class="tag orange">⚠ Peringatan Kritis (Game Over jika)</span>
           <p><i class="sw red"></i><b>RAID 0:</b> Jika 1 disk saja rusak = LANGSUNG GAME OVER.</p>
           <p><i class="sw pink"></i><b>RAID 5:</b> Hanya tahan 1 disk rusak. Jika 2 disk rusak bersamaan = GAME OVER.</p>
-          <p><i class="sw purple"></i><b>RAID 1 &amp; 10:</b> Tahan 2 disk rusak. Jika 3 disk rusak bersamaan = GAME OVER (Disederhanakan untuk game ini).</p>
+          <p><i class="sw purple"></i><b>RAID 1:</b> 4 salinan identik. GAME OVER hanya jika keempat disk rusak.</p>
+          <p><i class="sw mint"></i><b>RAID 10:</b> 2 pasang mirror. GAME OVER jika <b>kedua disk dalam satu pasangan</b> (Disk 1+2 atau Disk 3+4) rusak.</p>
           <p><i class="sw yellow"></i>Kamu kehabisan uang dan tidak bisa membeli disk pengganti ($100)!</p>
         </div>
       </div>
@@ -180,6 +284,13 @@
         <button class="btn yellow active" data-ms="2500">NORMAL</button>
         <button class="btn yellow" data-ms="1500">CEPAT</button>
       </div>
+      <p class="set-label">Bencana acak (disk rusak sendiri)</p>
+      <div class="row" id="randRow">
+        <button class="btn yellow active" data-r="1">AKTIF</button>
+        <button class="btn yellow" data-r="0">MATI (MODE DEMO)</button>
+      </div>
+      <p class="set-label">Suara</p>
+      <button class="btn mint" id="btnSound">SUARA: ON</button>
       <p class="set-label">Tampilan</p>
       <button class="btn mint" id="btnDark2">GANTI MODE TERANG/GELAP</button>
       <button class="btn big green" id="btnSetOk">SIMPAN</button>
@@ -207,7 +318,7 @@
 
 <div class="overlay" id="ovWin" hidden>
   <div class="win modal result">
-    <div class="tag yellow float-tag">SYSDMIN LEGEND</div>
+    <div class="tag yellow float-tag" id="rankTag">SYSADMIN LEGEND</div>
     <div class="titlebar green"><i></i><i></i><i></i><span>YOU_WIN.EXE</span></div>
     <div class="result-head green"><h1>YOU SURVIVED<br>30 DAYS!</h1></div>
     <div class="modal-body">
