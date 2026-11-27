@@ -17,16 +17,15 @@ const RAIDS = {
   10: { name: 'RAID 10', eff: 50,  income: 30, info: 'Mirror lalu stripe (2 pasang). Tahan 1 disk rusak per pasangan; jika kedua disk dalam satu pasangan rusak, data hilang.' },
 };
 let randomOn = true;  
-
-let st;               
-let dayMs = 2500;     
+let st;              
+let dayMs = 2500;    
 let lastTick = 0;
 let loopId = null;
 let logLines = [];
 
 function newState() {
   return {
-    raid: null, data: '', phase: 'idle',  
+    raid: null, data: '', phase: 'idle',   // idle | processing | running | over
     paused: false, day: 1, money: START_MONEY, dayAcc: 0, heat: 0, backup: false,
     disks: Array.from({ length: 4 }, () => ({ state: 'ok', cells: Array(12).fill(null), prog: 0 })),
     layout: null,
@@ -35,7 +34,7 @@ function newState() {
 
 function buildLayout(raid, str) {
   const L = Array.from({ length: 4 }, () => Array(12).fill(null));
-  L.route = []; 
+  L.route = [];
   [...str].forEach((ch, i) => {
     if (raid === 0) {
       L[i % 4][Math.floor(i / 4)] = { ch, t: 'data' };
@@ -55,7 +54,7 @@ function buildLayout(raid, str) {
       L.route.push([pair * 2, pair * 2 + 1]);
     }
   });
-  if (raid === 5) {  
+  if (raid === 5) { 
     for (let s = 0; s < 4; s++) {
       const p = (3 - s) % 4; let x = 0, any = false;
       for (let d = 0; d < 4; d++) if (d !== p && L[d][s]) { x ^= L[d][s].ch.charCodeAt(0); any = true; }
@@ -84,15 +83,15 @@ function log(text, cls = 'ok', reset = false) {
 const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 function badCount() { return st.disks.filter((d) => d.state !== 'ok').length; }
-
 function render() {
+  // header
   const bad = badCount();
   const lost = st.phase === 'over' && st.lostReason;
   $('#statusText').textContent = 'STATUS: ' + (lost ? 'DATA LOST' : bad ? 'DEGRADED' : st.heat > 0 ? 'OVERHEAT' : 'OPTIMAL');
   $('#statusDot').className = 'dot ' + (lost ? 'lost' : bad || st.heat > 0 ? 'degraded' : '');
   $('#dayText').textContent = `HARI ${st.day}/${TARGET_DAY}`;
   $('#dayBar').style.width = (st.day / TARGET_DAY) * 100 + '%';
-  $('#moneyText').textContent = 'POIN $' + st.money;
+  $('#moneyText').textContent = 'UANG $' + st.money;
   $('#moneyText').closest('.chip').classList.toggle('low', st.money < REPLACE_COST);
   $('#btnPause').textContent = st.paused ? '▶ RESUME' : '❚❚ PAUSE';
   $('#busData').textContent = st.data ? st.data : '- - - -';
@@ -101,6 +100,7 @@ function render() {
   $('#dataInput').disabled = locked;
   $$('.raid-btn').forEach((b) => {
     b.classList.toggle('sel', +b.dataset.raid === st.raid);
+    b.setAttribute('aria-pressed', +b.dataset.raid === st.raid ? 'true' : 'false');
     b.disabled = locked;
   });
   $('#counter').textContent = `${$('#dataInput').value.length}/12`;
@@ -108,6 +108,8 @@ function render() {
   const canRebuild = st.phase === 'running' && st.raid !== 0 &&
     st.disks.some((d) => d.state === 'replaced') && !st.disks.some((d) => d.state === 'rebuilding');
   $('#btnRebuild').disabled = !canRebuild;
+  $('#btnRebuild').classList.toggle('guide', canRebuild);
+  $('#btnStore').classList.toggle('guide', !$('#btnStore').disabled);
   $('#btnFail').disabled = !(st.phase === 'running' && st.disks.some((d) => d.state === 'ok'));
   $('#btnBackup').disabled = !(st.phase === 'running' && !st.backup && st.money >= BACKUP_COST);
   $('#btnBackup').textContent = st.backup ? '\u{1F4BE} Backup Tersimpan \u2713' : `\u{1F4BE} Buat Backup ($${BACKUP_COST})`;
@@ -127,6 +129,12 @@ function render() {
   if (pendingWin) hint.textContent = 'Selesaikan rebuild dulu untuk menang!';
   else if (st.phase === 'idle' && st.raid === null) hint.textContent = 'Pilih arsitektur RAID di panel kiri untuk memulai';
   else if (st.phase === 'idle') hint.textContent = 'Tekan "Proses Penyimpanan" untuk menyalakan server';
+  else if (st.phase === 'running' && st.disks.some((d) => d.state === 'failed'))
+    hint.textContent = '\u26A0 Langkah 1/2: klik \u201CBeli Pengganti\u201D pada disk yang merah.';
+  else if (st.phase === 'running' && st.disks.some((d) => d.state === 'replaced'))
+    hint.textContent = '\u2714 Langkah 2/2: klik \u201CJalankan Rebuild Data\u201D di panel kiri.';
+  else if (st.phase === 'running' && st.disks.some((d) => d.state === 'rebuilding'))
+    hint.textContent = '\u23F3 Rebuild berjalan. Selama proses ini risiko disk lain rusak naik 1,5\u00D7.';
   else hint.hidden = true;
   $('#vizTag').hidden = st.phase === 'idle';
 
@@ -164,7 +172,8 @@ function diskHTML(d, i) {
   } else if (i === 0 && st.phase === 'running' && badCount() === 0) {
     tag = '<div class="stag optimal">OPTIMAL</div>';
   }
-  return `<div class="disk ${cls}">${tag}
+  const stLbl = { ok: 'sehat', failed: 'rusak', replaced: 'pengganti terpasang', rebuilding: 'sedang rebuild' }[d.state];
+  return `<div class="disk ${cls}" role="group" aria-label="Disk ${i + 1}: ${stLbl}">${tag}
     <div class="dhead"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>Disk ${i + 1}<span class="led"></span></div>
     <div class="dlabel">${diskLabel(i)}</div>
     <div class="cells">${cells}</div>${extra}</div>`;
@@ -245,6 +254,7 @@ function startRebuild() {
     d.state = 'rebuilding'; d.prog = 0;
     log(rebuildLog(i), 'ok');
   });
+  log('Rebuild membaca semua disk sehat: risiko disk kedua rusak naik 1,5\u00D7. (Di dunia nyata bisa berjam-jam; di simulasi dipercepat 3 dtk.)', 'warn');
   render();
 }
 
@@ -280,7 +290,7 @@ function loop(now) {
   lastTick = now;
   if (st && st.phase === 'running' && !st.paused) {
     let dirty = false;
-    // progres rebuild
+
     st.disks.forEach((d, i) => {
       if (d.state !== 'rebuilding') return;
       d.prog += dt / REBUILD_MS; dirty = true;
@@ -290,7 +300,6 @@ function loop(now) {
         evaluate();
       }
     });
-    // pergantian hari
     if (st.phase === 'running' && st.day < TARGET_DAY) {
       st.dayAcc += dt;
       if (st.dayAcc >= dayMs) { st.dayAcc = 0; nextDay(); dirty = true; }
@@ -300,7 +309,6 @@ function loop(now) {
   loopId = requestAnimationFrame(loop);
 }
 
-// update ringan tiap frame saat rebuild (tanpa re-render penuh jika hanya progress bar)
 function updateLive() {
   const bars = $$('.disk .prog b');
   if (bars.length && !st._fullRender) {
@@ -348,7 +356,7 @@ function survives() {
   if (st.raid === 0) return n === 0;
   if (st.raid === 5) return n <= 1;
   if (st.raid === 1) return n < 4;
-  return !((bad[0] && bad[1]) || (bad[2] && bad[3])); 
+  return !((bad[0] && bad[1]) || (bad[2] && bad[3]));  // RAID 10: pasangan mirror (1+2) & (3+4)
 }
 
 function makeBackup() {
@@ -426,7 +434,7 @@ function win() {
   log('Hari ke-30 tercapai. Server selamat!'); sfx.win();
   render();
   const total = st.money + WIN_BONUS;
-  $('#winRaidLbl').textContent = `Poin Akhir (${RAIDS[st.raid].name})`;
+  $('#winRaidLbl').textContent = `Uang Akhir (${RAIDS[st.raid].name})`;
   $('#winPts').textContent = '$' + st.money;
   $('#winBonus').textContent = '+$' + WIN_BONUS;
   $('#winTotal').textContent = '$' + total;
@@ -500,7 +508,14 @@ function init() {
   setSound(load('sound') !== '0');
   resetGame();
 
-  $('#btnStart').onclick = () => { resetGame(); showScreen('gameScreen'); };
+  $('#btnStart').onclick = () => {
+    resetGame(); showScreen('gameScreen');
+    if (!load('seenhelp')) { store('seenhelp', '1'); openHelp(); }
+  };
+  $('#btnMenuGame').onclick = () => {
+    if (st.phase === 'running' && !confirm('Kembali ke menu? Progres game ini akan hilang.')) return;
+    resetGame(); showScreen('startScreen');
+  };
   $('#btnHowStart').onclick = openHelp;
   $('#btnHelp').onclick = openHelp;
   $('#btnHelpOk').onclick = closeHelp;
@@ -519,7 +534,7 @@ function init() {
 
   $('#dataInput').addEventListener('input', (e) => {
     e.target.value = e.target.value.toUpperCase().replace(/\s/g, '');
-    st.data = e.target.value;  // (bug asli: di-reset '' sehingga tombol tak pernah aktif)
+    st.data = e.target.value;
     render();
   });
   $('#dataInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') storeData(); });
@@ -534,17 +549,22 @@ function init() {
   $('#ovSettings').addEventListener('click', (e) => { if (e.target === $('#ovSettings')) $('#ovSettings').hidden = true; });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (!$('#ovHelp').hidden) closeHelp();
+    if (!$('#ovLocal').hidden) $('#ovLocal').hidden = true;
+    else if (!$('#ovHelp').hidden) closeHelp();
     else if (!$('#ovSettings').hidden) $('#ovSettings').hidden = true;
   });
 
-  $('#disks').addEventListener('click', (e) => {   // mode demo: klik disk untuk merusaknya
+  $('#disks').addEventListener('click', (e) => { 
     const el = e.target.closest('.disk');
     if (!el || !el.parentNode || randomOn || st.phase !== 'running') return;
     const i = [...el.parentNode.children].indexOf(el);
     if (st.disks[i] && st.disks[i].state === 'ok') failDisk(i);
   });
   rsInit(); duInit(); fxInit(); tourInit(); olInit();
+  $('#btnLocal').onclick = () => ($('#ovLocal').hidden = false);
+  $('#localCancel').onclick = () => ($('#ovLocal').hidden = true);
+  ['#btnDuel', '#btnTour'].forEach((id) => $(id).addEventListener('click', () => ($('#ovLocal').hidden = true)));
+  $('#ovLocal').addEventListener('click', (e) => { if (e.target === $('#ovLocal')) $('#ovLocal').hidden = true; });
   lastTick = performance.now();
   loopId = requestAnimationFrame(loop);
 }
@@ -562,7 +582,7 @@ function rsNext() {
   clearInterval(RS.timer);
   if (RS.round >= RS.total) return rsEnd(true);
   RS.round++;
-  RS.q = T.active ? T.puzzles[RS.round - 1] : genPuzzle();   // turnamen: soal sama untuk semua pemain
+  RS.q = T.active ? T.puzzles[RS.round - 1] : genPuzzle(); 
   Object.assign(RS, { bits: Array(8).fill(0), left: RS.tl, hint: false, locked: false });
   $('#rsMsg').textContent = '';
   rsRender();
@@ -779,7 +799,6 @@ function duInit() {
   });
 }
 
-/* ================= TURNAMEN (2-6 PEMAIN, BERGILIRAN) ================= */
 const T = { active: false, players: [], idx: 0, puzzles: [], names: [] };
 function tourOpen() {
   $('#tourNames').innerHTML = Array.from({ length: 6 }, (_, i) => `<input class="tour-in" maxlength="12" placeholder="Pemain ${i + 1}" autocomplete="off">`).join('');
@@ -824,8 +843,7 @@ const HOST = { ans: 0, stun: {}, cd: {}, timer: null, seq: 0, evt: null, gen: 0 
 const MAXP = 8, CODECH = 'ABCDEFGHJKMNPQRSTUVWXYZ';
 const ORDER = [['r1', 0], ['r1', 1], ['r1', 2], ['r1', 3], ['r2', 0], ['r2', 1], ['fin', 0]];
 const genCode = () => Array.from({ length: 4 }, () => CODECH[Math.floor(Math.random() * CODECH.length)]).join('');
-const pname = (id) => ((OG && OG.players.find((p) => p.id === id)) || {}).name || '?';
-
+const pname = (id) => ((OG && OG.players.find((p) => p.id === id)) || {}).name || (OG && OG.names && OG.names[id]) || '?';
 
 function olStatus(t, bad) { const s = $('#olStatus'); s.textContent = t; s.classList.toggle('bad', !!bad); }
 function olOpen() {
@@ -837,14 +855,14 @@ function olName() {
   if (!n) { olStatus('Isi nama dulu ya.', 1); return ''; }
   store('olname', n); return n;
 }
-function olReady() { if (typeof Peer === 'undefined') { olStatus('PeerJS belum termuat. Cek internet lalu muat ulang halaman.', 1); return false; } return true; }
+function olReady() { if (typeof Peer === 'undefined') { olStatus('PeerJS belum termuat. Cek internet lalu muat ulang halaman, atau main di mode lokal (XOR Duel / Turnamen).', 1); return false; } return true; }
 function olCreate() {
   const name = olName(); if (!name || !olReady()) return;
   olStatus('Membuat room...');
   const code = genCode(), peer = new Peer('raidshield-' + code);
   peer.on('open', () => {
     Object.assign(NET, { peer, host: true, code, id: 'host', name, conns: {} });
-    OG = { phase: 'lobby', mode: 'duel', host: 'host', players: [{ id: 'host', name }] };
+    OG = { phase: 'lobby', mode: 'duel', host: 'host', players: [{ id: 'host', name }], names: { host: name } };
     $('#ovOnline').hidden = true; olEnter();
   });
   peer.on('connection', (c) => {
@@ -909,7 +927,7 @@ function hostMsg(c, m) {
     if (!OG || OG.phase !== 'lobby') return c.send({ t: 'deny', why: 'Game sedang berjalan, coba lagi setelah selesai.' });
     if (OG.players.length >= MAXP) return c.send({ t: 'deny', why: 'Room penuh (maksimal 8 pemain).' });
     const name = String(m.name || 'Pemain').slice(0, 12);
-    NET.conns[c.peer] = c; OG.players.push({ id: c.peer, name });
+    NET.conns[c.peer] = c; OG.players.push({ id: c.peer, name }); OG.names[c.peer] = name;
     c.send({ t: 'welcome', id: c.peer }); sys(`${name} bergabung`); push();
   } else if (NET.conns[c.peer]) hostAct(c.peer, m);
 }
@@ -991,7 +1009,7 @@ function hSubmit(id) {
   if (parseInt(M.bits[id].join(''), 2) === HOST.ans) { M.wins[id]++; endRound(id); }
   else { HOST.stun[id] = Date.now() + 2000; M.msg = `${pname(id)} salah! STUN 2 dtk`; HOST.evt = { n: ++HOST.seq, k: 'wrong', to: id }; push(); }
 }
-function hAttack(id, to) {   // saling rusakin disk: 3 bit jawaban lawan teracak
+function hAttack(id, to) {
   const M = OG.match, now = Date.now();
   if (OG.phase !== 'play' || !M || !M.bits[id] || !M.bits[to] || id === to || (HOST.cd[id] || 0) > now) return;
   HOST.cd[id] = now + 6000;
@@ -1019,7 +1037,7 @@ function tourAdvance() {
   while (B.k < ORDER.length) {
     const [a, b] = tourPair(B, B.k);
     if (a && b) { B.cur = B.k; return newMatch([a, b], 2); }
-    tourPlace(a || b || null); B.k++;   // BYE: lawan kosong, otomatis lolos
+    tourPlace(a || b || null); B.k++; 
   }
   B.cur = null; OG.phase = 'over'; OG.match = null; OG.champ = B.champ; push();
 }
@@ -1043,10 +1061,11 @@ function olInvite(kind) {
   else { (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).catch(() => {}); floatText('Undangan tersalin!', $('#rmBody')); }
 }
 function bracketHTML(B) {
-  const bx = (id) => `<div class="bx ${id ? '' : 'bye'}">${id ? esc(pname(id)) : '\u2014'}</div>`;
+  const ci = (id) => Math.max(0, OG.players.findIndex((p) => p.id === id)) % 4;
+  const bx = (id) => `<div class="bx ${id ? 'c' + ci(id) : 'bye'}">${id ? esc(pname(id)) : '\u2014'}</div>`;
   const cur = B.cur != null ? ORDER[B.cur] : null, act2 = (r, i) => (cur && cur[0] === r && cur[1] === i ? 'live' : '');
   const pair = (a, i0, r, mi) => `<div class="pair ${act2(r, mi)}">${bx(a[i0])}${bx(a[i0 + 1])}</div>`;
-  return `<div class="br-wrap"><div class="br-head"><div class="br-title">JADWAL<br>PERTANDINGAN</div><div class="br-liga">LIGA XOR</div></div><div class="bracket">
+  return `<div class="br-wrap"><div class="br-head"><div class="br-title">\u{1F3C6} BAGAN TURNAMEN</div><div class="br-sub">sistem gugur \u00B7 menang 2 ronde</div></div><div class="bracket">
     <div class="half"><div class="bcol">${pair(B.r1, 0, 'r1', 0)}${pair(B.r1, 2, 'r1', 1)}</div><div class="bcol">${pair(B.r2, 0, 'r2', 0)}</div></div>
     <div class="fincol">${bx(B.fin[0])}<div class="finbadge ${act2('fin', 0)}">FINAL</div>${bx(B.fin[1])}${B.champ ? `<div class="bx champ">\u{1F3C6} ${esc(pname(B.champ))}</div>` : ''}</div>
     <div class="half rev"><div class="bcol">${pair(B.r1, 4, 'r1', 2)}${pair(B.r1, 6, 'r1', 3)}</div><div class="bcol">${pair(B.r2, 2, 'r2', 1)}</div></div></div></div>`;
@@ -1101,7 +1120,10 @@ function olRender() {
 }
 function olInit() {
   $('#btnOnline').onclick = olOpen; $('#olCancel').onclick = () => ($('#ovOnline').hidden = true);
-  $('#olCreate').onclick = olCreate; $('#olJoin').onclick = olJoin; $('#rmLeave').onclick = () => olLeave();
+  $('#olCreate').onclick = olCreate; $('#olJoin').onclick = olJoin; $('#rmLeave').onclick = () => {
+    if (NET.host && !confirm('Kamu host. Jika keluar, room ditutup untuk semua pemain. Lanjut keluar?')) return;
+    olLeave();
+  };
   $('#olCode').addEventListener('input', (e) => (e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '')));
   const send = () => { const t = $('#chatIn').value.trim(); if (t) { act({ t: 'chat', text: t }); $('#chatIn').value = ''; } };
   $('#chatSend').onclick = send; $('#chatIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });

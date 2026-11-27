@@ -415,7 +415,6 @@ body.alarm::after{content:"";position:fixed;inset:0;box-shadow:inset 0 0 120px 3
 @keyframes zoom{from{transform:scale(2.5);opacity:0}35%{opacity:1}to{transform:scale(1)}}
 @media(max-width:700px){.du-players{grid-template-columns:1fr}.rs-bit kbd{display:none}}
 
-
 .tour-in{width:100%;border:3px solid #111;border-radius:10px;padding:10px 12px;margin-bottom:8px;font:700 14px var(--f-mono);background:#fff;color:#111;box-shadow:3px 3px 0 #111}
 .splash-name{text-align:center;font:clamp(12px,2.6vw,20px)/2 var(--f-disp);color:#fff;padding:20px}
 .splash-name span{display:block;font-size:clamp(22px,6vw,54px);color:var(--yellow);text-shadow:5px 5px 0 #111;margin:10px 0;word-break:break-all;line-height:1.3}
@@ -434,7 +433,7 @@ body.alarm::after{content:"";position:fixed;inset:0;box-shadow:inset 0 0 120px 3
 .logo{margin:8px 0 16px}
 .tagline{font-size:16px;padding:6px 20px;margin-bottom:14px}
 .main-body .btn.big{font-size:20px;padding:14px;margin-bottom:12px}
-.mode-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.mode-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
 .mode-grid .btn{padding:9px 4px;font-size:12.5px;line-height:1.25;display:flex;flex-direction:column;align-items:center}
 .mode-grid .btn small{font:700 10px var(--f-mono);opacity:.75;margin-top:2px}
 .boot-hint{position:static;margin:18px 0 24px;width:100%}
@@ -444,7 +443,6 @@ body.alarm::after{content:"";position:fixed;inset:0;box-shadow:inset 0 0 120px 3
   .loadrow{margin-bottom:10px}.dino-deco{top:14px}
 }
 @media(max-width:560px){.main-win{margin-top:40px}.main-body{padding:14px 18px 18px}.mode-grid .btn{font-size:11px}}
-/* menu utama: jendela dipusatkan secara vertikal */
 #startScreen{--sy:max(70px,calc(50vh - 250px));padding-top:var(--sy);padding-bottom:10px}
 #startScreen .main-win{margin-top:0}
 #startScreen .dino-deco{top:calc(var(--sy) - 60px)}
@@ -464,21 +462,35 @@ body.alarm::after{content:"";position:fixed;inset:0;box-shadow:inset 0 0 120px 3
 .cm b{color:var(--blue)}.cm.sys{opacity:.65;font-style:italic}
 .chat-in{display:flex;gap:8px;padding:10px 14px;border-top:3px solid #111}
 .chat-in input{flex:1;min-width:0;border:3px solid #111;border-radius:10px;padding:8px 10px;font:600 14px var(--f-ui);background:#fff;color:#111}
-/* bracket meniru desain Liga: navy + pola berlian emas, kotak kuning, garis putus-putus */
-.br-wrap{overflow-x:auto;border:3px solid #111;border-radius:14px;color:#fff;background:repeating-linear-gradient(45deg,rgba(255,214,10,.1) 0 2px,transparent 2px 46px),repeating-linear-gradient(-45deg,rgba(255,214,10,.1) 0 2px,transparent 2px 46px),#0b0e33}
-.br-head{display:flex;justify-content:space-between;align-items:flex-start;padding:14px 18px 0;min-width:640px}
-.br-title{font:italic 900 clamp(20px,3.4vw,30px)/1 var(--f-ui);color:#ffd60a;text-shadow:3px 3px 0 #555;border-bottom:5px solid #e8203a;padding-bottom:8px}
-.br-liga{font:11px var(--f-disp);letter-spacing:2px;margin-top:6px}
-.bracket{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px;min-width:640px}
-.half{display:flex;align-items:stretch;gap:22px;flex:1}.half.rev{flex-direction:row-reverse}
-.bcol{display:flex;flex-direction:column;justify-content:space-around;gap:16px;flex:1}
-.pair{display:flex;flex-direction:column;gap:8px;padding:0 12px 0 0;border:2px dashed #fff;border-left:0;border-radius:0 14px 14px 0;justify-content:center}
-.half.rev .pair{padding:0 0 0 12px;border:2px dashed #fff;border-right:0;border-radius:14px 0 0 14px}
-.bx{background:#ffd60a;color:#111;border-radius:12px;padding:8px 10px;font:800 13px var(--f-ui);text-align:center;min-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bx.bye{opacity:.35}.bx.champ{background:#fff;margin-top:8px}
-.pair.live{animation:glow .8s ease-in-out infinite alternate}
-@keyframes glow{to{box-shadow:0 0 16px 3px #e8203a;border-color:#e8203a}}
-.fincol{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:110px}
-.finbadge{background:#e8203a;color:#fff;border-radius:999px;padding:4px 18px;font:800 12px var(--f-ui)}
+
+.br-wrap{overflow-x:auto;border:3px dashed var(--ink);border-radius:14px;background:var(--panel);color:var(--text)}
+.br-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px 0;min-width:620px}
+.br-title{font:11px/1.6 var(--f-disp)}
+.br-sub{font:700 11px var(--f-mono);opacity:.7}
+.bracket{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px 18px;min-width:620px}
+.half{display:flex;align-items:stretch;gap:18px;flex:1}.half.rev{flex-direction:row-reverse}
+.bcol{display:flex;flex-direction:column;justify-content:space-around;gap:14px;flex:1}
+.pair{display:flex;flex-direction:column;gap:8px;padding:0 12px 0 0;border:3px solid var(--ink);border-left:0;border-radius:0 12px 12px 0;justify-content:center}
+.half.rev .pair{padding:0 0 0 12px;border:3px solid var(--ink);border-right:0;border-radius:12px 0 0 12px}
+.bx{border:3px solid #111;border-radius:10px;padding:7px 8px;font:800 13px var(--f-ui);text-align:center;min-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#111;box-shadow:3px 3px 0 #111;background:var(--yellow)}
+.bx.c0{background:var(--yellow)}.bx.c1{background:var(--mint)}.bx.c2{background:var(--pink)}.bx.c3{background:var(--purple)}
+.bx.bye{background:var(--cell);box-shadow:none;border-style:dashed;opacity:.55}
+.bx.champ{background:var(--yellow);margin-top:10px;animation:zoom .6s ease-out}
+.pair.live{animation:livepair .7s steps(2) infinite}
+@keyframes livepair{50%{border-color:var(--red)}}
+.fincol{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:110px}
+.finbadge{background:var(--red);color:#fff;border:3px solid #111;border-radius:8px;padding:5px 14px;font:9px var(--f-disp);box-shadow:3px 3px 0 #111}
 .finbadge.live{animation:pulse .6s infinite}
 @media(max-width:560px){.rm-code b{letter-spacing:4px}}
+
+:is(#rescueScreen,#duelScreen,#roomScreen) .chip.yellow{background:var(--yellow)}
+:is(#rescueScreen,#duelScreen,#roomScreen) .chip.mint{background:var(--mint)}
+:is(#rescueScreen,#duelScreen,#roomScreen) .chip.pink{background:var(--pink)}
+:is(#rescueScreen,#duelScreen,#roomScreen) .chip.purple{background:var(--purple)}
+
+.raid-btn .rb-meta{font-size:9px;line-height:1.3;color:#444;margin-top:4px;font-family:var(--f-mono)}
+body.dark .raid-btn .rb-meta{color:#555}
+@keyframes nudge{0%,100%{box-shadow:3px 3px 0 #111,0 0 0 0 rgba(63,79,224,.55)}50%{box-shadow:3px 3px 0 #111,0 0 0 9px rgba(63,79,224,0)}}
+.btn.guide:not(:disabled),.disk .buy{animation:nudge 1.3s ease-in-out infinite}
+
+.modal.small .btn.big small{display:block;font:700 11px var(--f-mono);opacity:.75;margin-top:4px;letter-spacing:0}

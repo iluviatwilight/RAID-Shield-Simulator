@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RAID-Shield | Simulator RAID &amp; Pemulihan Data</title>
+<title>RAID-SHIELD | Simulator RAID &amp; Pemulihan Data</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@500;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -49,15 +49,14 @@
   <div class="win main-win">
     <div class="titlebar yellow"><i></i><i></i><i></i><span>RAID-SHIELD.EXE</span></div>
     <div class="main-body">
-      <h1 class="logo">RAID-Shield</h1>
+      <h1 class="logo">RAID-SHIELD</h1>
       <div class="tagline">Bertahan 30 Hari sebagai SysAdmin</div>
       <div class="loadrow"><small>loading</small><div class="bar wide"><b></b></div></div>
       <button class="btn big blue" id="btnStart">MULAI GAME</button>
       <button class="btn big green" id="btnOnline">🌐 MABAR ONLINE (ROOM)</button>
       <div class="mode-grid">
         <button class="btn mint" id="btnRescue" title="Latihan XOR parity RAID 5">🧩 XOR RESCUE<small>solo</small></button>
-        <button class="btn pink" id="btnDuel" title="Mabar 2 pemain">👥 XOR DUEL<small>2 pemain</small></button>
-        <button class="btn yellow" id="btnTour" title="Turnamen bergiliran">🏆 TURNAMEN<small>2-6 pemain</small></button>
+        <button class="btn pink" id="btnLocal" title="Main bareng di satu perangkat">👥 MABAR LOKAL<small>1 laptop, 2-6 pemain</small></button>
       </div>
       <div class="row">
         <button class="btn yellow" id="btnHowStart">CARA BERMAIN</button>
@@ -79,14 +78,16 @@
     <div class="chip day yellow"><span>📅</span>
       <div><span id="dayText">HARI 1/30</span><div class="mini-bar"><b id="dayBar"></b></div></div>
     </div>
-    <div class="chip money mint"><span class="coin"></span><span id="moneyText">POIN $1500</span></div>
+    <div class="chip money mint"><span class="coin"></span><span id="moneyText">UANG $1500</span></div>
     <div class="spacer"></div>
+    <button class="btn small cream" id="btnMenuGame">← MENU</button>
     <button class="btn small purple" id="btnPause">❚❚ PAUSE</button>
-    <button class="btn small yellow sq" id="btnHelp">?</button>
+    <button class="btn small yellow sq" id="btnHelp" aria-label="Cara bermain" title="Cara bermain">?</button>
     <button class="toggle" id="btnDark" aria-label="Mode gelap"><span class="knob"></span></button>
   </header>
 
   <main class="layout">
+    <!-- Panel kontrol -->
     <div class="win ctrl">
       <div class="titlebar purple"><i></i><i></i><i></i><span>PANEL KONTROL SIMULASI</span><span class="floppy">💾</span></div>
       <div class="ctrl-body">
@@ -95,10 +96,10 @@
 
         <div class="label-row"><label>Pemilih Arsitektur</label></div>
         <div class="raid-grid" id="raidGrid">
-          <button class="raid-btn" data-raid="0"><b>RAID 0</b><small>Striping</small></button>
-          <button class="raid-btn" data-raid="1"><b>RAID 1</b><small>Mirroring</small></button>
-          <button class="raid-btn" data-raid="5"><b>RAID 5</b><small>Parity</small></button>
-          <button class="raid-btn" data-raid="10"><b>RAID 10</b><small>Mirror+Stripe</small></button>
+          <button class="raid-btn" data-raid="0" title="Kapasitas 100% · tahan 0 disk · +$60/hari" aria-pressed="false"><b>RAID 0</b><small>Striping</small><span class="rb-meta">Kapasitas 100% · tahan 0 disk · +$60/hari</span></button>
+          <button class="raid-btn" data-raid="1" title="Kapasitas 25% · tahan 3 disk · +$15/hari" aria-pressed="false"><b>RAID 1</b><small>Mirroring</small><span class="rb-meta">Kapasitas 25% · tahan 3 disk · +$15/hari</span></button>
+          <button class="raid-btn" data-raid="5" title="Kapasitas 75% · tahan 1 disk · +$45/hari" aria-pressed="false"><b>RAID 5</b><small>Parity</small><span class="rb-meta">Kapasitas 75% · tahan 1 disk · +$45/hari</span></button>
+          <button class="raid-btn" data-raid="10" title="Kapasitas 50% · 1 disk/pasangan · +$30/hari" aria-pressed="false"><b>RAID 10</b><small>Mirror+Stripe</small><span class="rb-meta">Kapasitas 50% · 1 disk/pasangan · +$30/hari</span></button>
         </div>
 
         <div class="label-row"><label>Action Center</label></div>
@@ -121,7 +122,7 @@
 
     <div class="win term-win">
       <div class="titlebar yellow"><i></i><i></i><i></i><span>TERMINAL PARITY</span><small>BASH</small></div>
-      <div class="terminal" id="terminal"></div>
+      <div class="terminal" id="terminal" role="log" aria-live="polite"></div>
     </div>
 
     <div class="win eff-win">
@@ -174,6 +175,19 @@
       <div class="stat purple"><span>Ronde</span><b id="rsEndRound"></b></div>
       <div class="stat mint"><span>Rekor</span><b id="rsEndBest"></b></div>
       <div class="row"><button class="btn green" id="rsAgain">MAIN LAGI</button><button class="btn cream" id="rsMenu">MENU UTAMA</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ovLocal" hidden>
+  <div class="win modal small">
+    <div class="titlebar pink"><i></i><i></i><i></i><span>MABAR_LOKAL.EXE</span></div>
+    <div class="modal-body">
+      <h2>MABAR LOKAL</h2>
+      <p class="set-label">Main bareng di satu perangkat, tanpa internet. Pilih mode:</p>
+      <button class="btn big pink" id="btnDuel" title="Mabar 2 pemain">👥 XOR DUEL<small>2 pemain, rebutan bersamaan</small></button>
+      <button class="btn big yellow" id="btnTour" title="Turnamen bergiliran">🏆 TURNAMEN<small>2-6 pemain, bergiliran</small></button>
+      <button class="btn cream" id="localCancel">BATAL</button>
     </div>
   </div>
 </div>
@@ -338,7 +352,7 @@
     <div class="modal-body">
       <div class="reason" id="overReason"></div>
       <div class="stat mint"><span>Bertahan sampai</span><b id="overDay"></b></div>
-      <div class="stat yellow"><span>Poin akhir</span><b id="overPts"></b></div>
+      <div class="stat yellow"><span>Uang akhir</span><b id="overPts"></b></div>
       <div class="stat purple"><span>Tipe RAID</span><b id="overRaid"></b></div>
       <div class="row">
         <button class="btn green" id="btnRetry">COBA LAGI</button>
@@ -355,7 +369,7 @@
     <div class="result-head green"><h1>YOU SURVIVED<br>30 DAYS!</h1></div>
     <div class="modal-body">
       <div class="stars" id="stars"></div>
-      <div class="stat yellow"><span id="winRaidLbl">Poin Akhir</span><b id="winPts"></b></div>
+      <div class="stat yellow"><span id="winRaidLbl">Uang Akhir</span><b id="winPts"></b></div>
       <div class="stat mint"><span>Bonus Bertahan</span><b id="winBonus"></b></div>
       <div class="stat purple"><span>Total Skor</span><b id="winTotal"></b></div>
       <div class="row">
