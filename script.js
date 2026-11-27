@@ -18,7 +18,7 @@ const RAIDS = {
 };
 let randomOn = true;  
 
-let st;              
+let st;               
 let dayMs = 2500;     
 let lastTick = 0;
 let loopId = null;
@@ -26,7 +26,7 @@ let logLines = [];
 
 function newState() {
   return {
-    raid: null, data: '', phase: 'idle',   
+    raid: null, data: '', phase: 'idle',  
     paused: false, day: 1, money: START_MONEY, dayAcc: 0, heat: 0, backup: false,
     disks: Array.from({ length: 4 }, () => ({ state: 'ok', cells: Array(12).fill(null), prog: 0 })),
     layout: null,
@@ -35,7 +35,7 @@ function newState() {
 
 function buildLayout(raid, str) {
   const L = Array.from({ length: 4 }, () => Array(12).fill(null));
-  L.route = [];  
+  L.route = []; 
   [...str].forEach((ch, i) => {
     if (raid === 0) {
       L[i % 4][Math.floor(i / 4)] = { ch, t: 'data' };
@@ -55,7 +55,7 @@ function buildLayout(raid, str) {
       L.route.push([pair * 2, pair * 2 + 1]);
     }
   });
-  if (raid === 5) {  // parity = XOR seluruh blok data dalam satu stripe
+  if (raid === 5) {  
     for (let s = 0; s < 4; s++) {
       const p = (3 - s) % 4; let x = 0, any = false;
       for (let d = 0; d < 4; d++) if (d !== p && L[d][s]) { x ^= L[d][s].ch.charCodeAt(0); any = true; }
@@ -300,6 +300,7 @@ function loop(now) {
   loopId = requestAnimationFrame(loop);
 }
 
+// update ringan tiap frame saat rebuild (tanpa re-render penuh jika hanya progress bar)
 function updateLive() {
   const bars = $$('.disk .prog b');
   if (bars.length && !st._fullRender) {
@@ -347,7 +348,7 @@ function survives() {
   if (st.raid === 0) return n === 0;
   if (st.raid === 5) return n <= 1;
   if (st.raid === 1) return n < 4;
-  return !((bad[0] && bad[1]) || (bad[2] && bad[3]));  // RAID 10: pasangan mirror (1+2) & (3+4)
+  return !((bad[0] && bad[1]) || (bad[2] && bad[3])); 
 }
 
 function makeBackup() {
@@ -543,7 +544,7 @@ function init() {
     const i = [...el.parentNode.children].indexOf(el);
     if (st.disks[i] && st.disks[i].state === 'ok') failDisk(i);
   });
-  rsInit(); duInit(); fxInit(); tourInit();
+  rsInit(); duInit(); fxInit(); tourInit(); olInit();
   lastTick = performance.now();
   loopId = requestAnimationFrame(loop);
 }
@@ -778,6 +779,7 @@ function duInit() {
   });
 }
 
+/* ================= TURNAMEN (2-6 PEMAIN, BERGILIRAN) ================= */
 const T = { active: false, players: [], idx: 0, puzzles: [], names: [] };
 function tourOpen() {
   $('#tourNames').innerHTML = Array.from({ length: 6 }, (_, i) => `<input class="tour-in" maxlength="12" placeholder="Pemain ${i + 1}" autocomplete="off">`).join('');
@@ -814,6 +816,310 @@ function tourInit() {
   $('#tourAgain').onclick = () => { $('#ovBoard').hidden = true; tourOpen(); };
   $('#tourMenu').onclick = () => { $('#ovBoard').hidden = true; showScreen('startScreen'); };
   $('#tourNames').addEventListener('keydown', (e) => { if (e.key === 'Enter') tourStart(); });
+}
+
+const NET = { peer: null, host: false, code: '', id: '', name: '', conns: {}, hc: null };
+let OG = null, lastEvt = 0, lastPhase = '';
+const HOST = { ans: 0, stun: {}, cd: {}, timer: null, seq: 0, evt: null, gen: 0 };
+const MAXP = 8, CODECH = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+const ORDER = [['r1', 0], ['r1', 1], ['r1', 2], ['r1', 3], ['r2', 0], ['r2', 1], ['fin', 0]];
+const genCode = () => Array.from({ length: 4 }, () => CODECH[Math.floor(Math.random() * CODECH.length)]).join('');
+const pname = (id) => ((OG && OG.players.find((p) => p.id === id)) || {}).name || '?';
+
+
+function olStatus(t, bad) { const s = $('#olStatus'); s.textContent = t; s.classList.toggle('bad', !!bad); }
+function olOpen() {
+  $('#olName').value = load('olname') || ''; olStatus('');
+  $('#ovOnline').hidden = false; ($('#olCode').value ? $('#olName') : $('#olName')).focus();
+}
+function olName() {
+  const n = $('#olName').value.trim().slice(0, 12);
+  if (!n) { olStatus('Isi nama dulu ya.', 1); return ''; }
+  store('olname', n); return n;
+}
+function olReady() { if (typeof Peer === 'undefined') { olStatus('PeerJS belum termuat. Cek internet lalu muat ulang halaman.', 1); return false; } return true; }
+function olCreate() {
+  const name = olName(); if (!name || !olReady()) return;
+  olStatus('Membuat room...');
+  const code = genCode(), peer = new Peer('raidshield-' + code);
+  peer.on('open', () => {
+    Object.assign(NET, { peer, host: true, code, id: 'host', name, conns: {} });
+    OG = { phase: 'lobby', mode: 'duel', host: 'host', players: [{ id: 'host', name }] };
+    $('#ovOnline').hidden = true; olEnter();
+  });
+  peer.on('connection', (c) => {
+    c.on('data', (m) => hostMsg(c, m));
+    c.on('close', () => hostDrop(c.peer)); c.on('error', () => hostDrop(c.peer));
+  });
+  peer.on('error', (e) => {
+    if (e.type === 'unavailable-id') { try { peer.destroy(); } catch (x) {} olCreate(); }
+    else if (!NET.peer) olStatus('Gagal membuat room: ' + e.type, 1);
+  });
+}
+function olJoin() {
+  const name = olName(), code = $('#olCode').value.trim().toUpperCase();
+  if (!name || !olReady()) return;
+  if (code.length !== 4) return olStatus('Kode room terdiri dari 4 huruf.', 1);
+  olStatus('Menyambung ke room ' + code + '...');
+  const peer = new Peer(); let done = false;
+  const fail = (t) => { if (!done) { olStatus(t, 1); try { peer.destroy(); } catch (e) {} } };
+  const to = setTimeout(() => fail('Room tidak ditemukan atau koneksi terlalu lambat.'), 12000);
+  peer.on('open', () => {
+    const c = peer.connect('raidshield-' + code, { reliable: true });
+    c.on('open', () => c.send({ t: 'hello', name }));
+    c.on('data', (m) => {
+      if (m.t === 'welcome') {
+        clearTimeout(to); done = true;
+        Object.assign(NET, { peer, host: false, code, id: m.id, name, hc: c }); $('#ovOnline').hidden = true; olEnter();
+      } else if (m.t === 'deny') { clearTimeout(to); fail(m.why); }
+      else clientMsg(m);
+    });
+    c.on('close', () => { if (done) olLeave('Koneksi ke host terputus.'); });
+  });
+  peer.on('error', (e) => { clearTimeout(to); fail(e.type === 'peer-unavailable' ? 'Room ' + code + ' tidak ditemukan.' : 'Gagal: ' + e.type); });
+}
+function olEnter() {
+  $('#chatLog').innerHTML = ''; lastEvt = 0; lastPhase = '';
+  chatAdd('', 'Selamat datang! Bagikan kode room ke temanmu.'); showScreen('roomScreen'); olRender();
+}
+function olLeave(msg) {
+  clearInterval(HOST.timer); HOST.gen++;
+  try { NET.peer && NET.peer.destroy(); } catch (e) {}
+  Object.assign(NET, { peer: null, host: false, conns: {}, hc: null, code: '' }); OG = null;
+  $('#olCount').hidden = true; showScreen('startScreen');
+  if (msg) floatText(msg, $('.main-win'), '#e04b3a');
+}
+function clientMsg(m) {
+  if (m.t === 'state') { OG = m.G; olRender(); }
+  else if (m.t === 'chat') chatAdd(m.from, m.text);
+  else if (m.t === 'tick' && OG && OG.match) { OG.match.left = m.left; olBar(m.left); }
+}
+const act = (m) => (NET.host ? hostAct('host', m) : NET.hc && NET.hc.send(m));
+const bc = (m) => Object.values(NET.conns).forEach((c) => c.open && c.send(m));
+function chat(from, text) { bc({ t: 'chat', from, text }); chatAdd(from, text); }
+const sys = (t) => chat('', t);
+function chatAdd(from, text) {
+  const l = $('#chatLog'), d = document.createElement('div');
+  d.className = 'cm' + (from ? '' : ' sys'); d.innerHTML = (from ? `<b>${esc(from)}</b> ` : '') + esc(text);
+  l.appendChild(d); l.scrollTop = l.scrollHeight; while (l.children.length > 80) l.firstChild.remove();
+}
+
+function hostMsg(c, m) {
+  if (m.t === 'hello') {
+    if (!OG || OG.phase !== 'lobby') return c.send({ t: 'deny', why: 'Game sedang berjalan, coba lagi setelah selesai.' });
+    if (OG.players.length >= MAXP) return c.send({ t: 'deny', why: 'Room penuh (maksimal 8 pemain).' });
+    const name = String(m.name || 'Pemain').slice(0, 12);
+    NET.conns[c.peer] = c; OG.players.push({ id: c.peer, name });
+    c.send({ t: 'welcome', id: c.peer }); sys(`${name} bergabung`); push();
+  } else if (NET.conns[c.peer]) hostAct(c.peer, m);
+}
+function hostAct(id, m) {
+  if (m.t === 'chat') return chat(pname(id), String(m.text || '').slice(0, 120));
+  if (m.t === 'toggle') return hToggle(id, m.n);
+  if (m.t === 'submit') return hSubmit(id);
+  if (m.t === 'attack') return hAttack(id, m.to);
+  if (id !== 'host') return;
+  if (m.t === 'mode' && OG.phase === 'lobby') { OG.mode = m.m === 'tour' ? 'tour' : 'duel'; push(); }
+  else if (m.t === 'start' && OG.phase === 'lobby') hStart();
+  else if (m.t === 'lobby') hLobby();
+}
+function push() {
+  const now = Date.now(), M = OG.match;
+  if (M) {
+    M.stunL = {}; M.cdL = {}; M.prog = {};
+    M.ids.forEach((i) => {
+      M.stunL[i] = Math.max(0, (HOST.stun[i] || 0) - now); M.cdL[i] = Math.max(0, (HOST.cd[i] || 0) - now);
+      M.prog[i] = M.bits[i] ? M.bits[i].filter((b, n) => b === ((HOST.ans >> (7 - n)) & 1)).length : 0;
+    });
+  }
+  OG.evt = HOST.evt;
+  Object.entries(NET.conns).forEach(([id, c]) => {
+    if (!c.open) return;
+    const G = { ...OG }; if (M) G.match = { ...M, bits: M.bits[id] ? { [id]: M.bits[id] } : {} };
+    c.send({ t: 'state', G });
+  });
+  olRender();
+}
+function hStart() {
+  const n = OG.players.length;
+  if (n < 2) return sys('Butuh minimal 2 pemain untuk mulai.');
+  if (OG.mode === 'duel' && n > 4) return sys('Mode DUEL maksimal 4 pemain. Pakai TURNAMEN untuk lebih banyak.');
+  HOST.gen++; OG.champ = null;
+  if (OG.mode === 'duel') return newMatch(OG.players.map((p) => p.id), 3);
+  const ids = OG.players.map((p) => p.id).sort(() => Math.random() - 0.5);
+  OG.br = { r1: Array.from({ length: 8 }, (_, i) => ids[i] || null), r2: [null, null, null, null], fin: [null, null], champ: null, k: -1, cur: null };
+  tourAdvance();
+}
+function hLobby() { clearInterval(HOST.timer); HOST.gen++; Object.assign(OG, { phase: 'lobby', match: null, br: null, champ: null }); push(); }
+function newMatch(ids, need) {
+  OG.match = { ids, need, max: need * 2 - 1, wins: Object.fromEntries(ids.map((i) => [i, 0])), round: 0 };
+  nextRound();
+}
+function nextRound() {
+  const M = OG.match, g = HOST.gen;
+  const lead = Object.entries(M.wins).sort((a, b) => b[1] - a[1]);
+  if (lead[0][1] >= M.need || M.round >= M.max) {
+    const top = lead.filter(([, v]) => v === lead[0][1]);
+    return endMatch(top[Math.floor(Math.random() * top.length)][0]);
+  }
+  M.round++; const q = genPuzzle(); HOST.ans = q.ans; M.q = { disks: q.disks, dead: q.dead };
+  M.bits = {}; M.ids.forEach((i) => (M.bits[i] = Array(8).fill(0)));
+  HOST.stun = {}; HOST.cd = {}; M.left = 25; M.msg = '';
+  OG.phase = 'count'; let c = 3; OG.cnt = c; push();
+  const step = () => {
+    if (g !== HOST.gen) return;
+    c--;
+    if (c > 0) { OG.cnt = c; push(); setTimeout(step, 700); }
+    else { OG.phase = 'play'; OG.cnt = 0; push(); clearInterval(HOST.timer); HOST.timer = setInterval(hTick, 250); }
+  };
+  setTimeout(step, 700);
+}
+function hTick() {
+  const M = OG.match; if (!M || OG.phase !== 'play') return;
+  M.left = Math.round((M.left - 0.25) * 100) / 100; bc({ t: 'tick', left: M.left }); olBar(M.left);
+  if (M.left <= 0) return endRound(null);
+  if (Math.round(M.left * 4) % 4 === 0) push();
+}
+function hToggle(id, n) {
+  const M = OG.match;
+  if (OG.phase !== 'play' || !M || !M.bits[id] || (HOST.stun[id] || 0) > Date.now() || !(n >= 0 && n < 8)) return;
+  M.bits[id][n] ^= 1; push();
+}
+function hSubmit(id) {
+  const M = OG.match;
+  if (OG.phase !== 'play' || !M || !M.bits[id] || (HOST.stun[id] || 0) > Date.now()) return;
+  if (parseInt(M.bits[id].join(''), 2) === HOST.ans) { M.wins[id]++; endRound(id); }
+  else { HOST.stun[id] = Date.now() + 2000; M.msg = `${pname(id)} salah! STUN 2 dtk`; HOST.evt = { n: ++HOST.seq, k: 'wrong', to: id }; push(); }
+}
+function hAttack(id, to) {   // saling rusakin disk: 3 bit jawaban lawan teracak
+  const M = OG.match, now = Date.now();
+  if (OG.phase !== 'play' || !M || !M.bits[id] || !M.bits[to] || id === to || (HOST.cd[id] || 0) > now) return;
+  HOST.cd[id] = now + 6000;
+  [0, 1, 2, 3, 4, 5, 6, 7].sort(() => Math.random() - 0.5).slice(0, 3).forEach((n) => (M.bits[to][n] ^= 1));
+  HOST.stun[to] = Math.max(HOST.stun[to] || 0, now + 800);
+  M.msg = `\u{1F4A5} ${pname(id)} merusak disk ${pname(to)}!`; HOST.evt = { n: ++HOST.seq, k: 'hit', from: id, to }; push();
+}
+function endRound(w) {
+  clearInterval(HOST.timer); const M = OG.match, g = HOST.gen; OG.phase = 'between';
+  M.msg = w ? `\u{1F3C6} ${pname(w)} menang ronde ${M.round}!` : `\u23F0 Waktu habis! Jawabannya ${bin8(HOST.ans)}`;
+  HOST.evt = { n: ++HOST.seq, k: w ? 'win' : 'time', to: w }; M.left = 0; push();
+  setTimeout(() => g === HOST.gen && nextRound(), 2200);
+}
+function endMatch(w) {
+  clearInterval(HOST.timer); const g = ++HOST.gen; OG.match.winner = w;
+  if (OG.mode === 'duel') { OG.phase = 'over'; OG.champ = w; return push(); }
+  OG.phase = 'matchend'; OG.match.msg = `\u2705 ${pname(w)} lolos ke babak berikutnya!`; tourPlace(w); push();
+  setTimeout(() => g === HOST.gen && tourAdvance(), 3500);
+}
+const alive = (x) => (x && OG.players.some((p) => p.id === x) ? x : null);
+function tourPair(B, k) { const [r, i] = ORDER[k], a = B[r]; return r === 'fin' ? [alive(a[0]), alive(a[1])] : [alive(a[2 * i]), alive(a[2 * i + 1])]; }
+function tourPlace(w) { const B = OG.br, [r, i] = ORDER[B.k]; if (r === 'r1') B.r2[i] = w; else if (r === 'r2') B.fin[i] = w; else B.champ = w; }
+function tourAdvance() {
+  const B = OG.br; B.k++;
+  while (B.k < ORDER.length) {
+    const [a, b] = tourPair(B, B.k);
+    if (a && b) { B.cur = B.k; return newMatch([a, b], 2); }
+    tourPlace(a || b || null); B.k++;   // BYE: lawan kosong, otomatis lolos
+  }
+  B.cur = null; OG.phase = 'over'; OG.match = null; OG.champ = B.champ; push();
+}
+function hostDrop(id) {
+  if (!NET.conns[id]) return;
+  const nm = pname(id); delete NET.conns[id]; OG.players = OG.players.filter((p) => p.id !== id); sys(`${nm} keluar`);
+  const M = OG.match;
+  if (M && M.ids.includes(id) && ['count', 'play', 'between'].includes(OG.phase)) {
+    M.ids = M.ids.filter((i) => i !== id); delete M.bits[id];
+    if (M.ids.length < 2) return endMatch(M.ids[0] || null);
+  }
+  push();
+}
+
+function olBar(left) { const b = $('#olTime'); if (b) { b.style.width = Math.max(0, left / 25 * 100) + '%'; b.parentNode.classList.toggle('low', left < 6); } }
+function olLink() { return /^https?:/.test(location.protocol) ? location.origin + location.pathname + '?room=' + NET.code : ''; }
+function olInvite(kind) {
+  const link = olLink(), txt = `Ayo mabar RAID-Shield! Kode room: ${NET.code}` + (link ? `\n${link}` : '');
+  if (kind === 'wa') window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
+  else if (kind === 'share' && navigator.share) navigator.share({ title: 'RAID-Shield', text: txt }).catch(() => {});
+  else { (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).catch(() => {}); floatText('Undangan tersalin!', $('#rmBody')); }
+}
+function bracketHTML(B) {
+  const bx = (id) => `<div class="bx ${id ? '' : 'bye'}">${id ? esc(pname(id)) : '\u2014'}</div>`;
+  const cur = B.cur != null ? ORDER[B.cur] : null, act2 = (r, i) => (cur && cur[0] === r && cur[1] === i ? 'live' : '');
+  const pair = (a, i0, r, mi) => `<div class="pair ${act2(r, mi)}">${bx(a[i0])}${bx(a[i0 + 1])}</div>`;
+  return `<div class="br-wrap"><div class="br-head"><div class="br-title">JADWAL<br>PERTANDINGAN</div><div class="br-liga">LIGA XOR</div></div><div class="bracket">
+    <div class="half"><div class="bcol">${pair(B.r1, 0, 'r1', 0)}${pair(B.r1, 2, 'r1', 1)}</div><div class="bcol">${pair(B.r2, 0, 'r2', 0)}</div></div>
+    <div class="fincol">${bx(B.fin[0])}<div class="finbadge ${act2('fin', 0)}">FINAL</div>${bx(B.fin[1])}${B.champ ? `<div class="bx champ">\u{1F3C6} ${esc(pname(B.champ))}</div>` : ''}</div>
+    <div class="half rev"><div class="bcol">${pair(B.r1, 4, 'r1', 2)}${pair(B.r1, 6, 'r1', 3)}</div><div class="bcol">${pair(B.r2, 2, 'r2', 1)}</div></div></div></div>`;
+}
+function olRender() {
+  if (!OG) return;
+  const me = NET.id, isH = NET.host, M = OG.match; let h = '';
+  $('#rmCode').textContent = NET.code;
+  if (OG.phase === 'lobby') {
+    h += `<div class="rm-code">KODE ROOM<b>${NET.code}</b></div>
+      <div class="row"><button class="btn mint" data-ol="copy">\u{1F4CB} Salin undangan</button><button class="btn green" data-ol="wa">\u{1F4AC} WhatsApp</button><button class="btn purple" data-ol="share">\u{1F4E4} Bagikan</button></div>
+      <p class="set-label">Pemain (${OG.players.length}/${MAXP})</p>
+      <div class="rm-players">${OG.players.map((p) => `<span class="pl ${p.id === me ? 'me' : ''}">${p.id === OG.host ? '\u{1F451} ' : ''}${esc(p.name)}</span>`).join('')}</div>`;
+    h += isH
+      ? `<p class="set-label">Mode permainan</p><div class="row"><button class="btn ${OG.mode === 'duel' ? 'yellow' : 'cream'}" data-ol="mode" data-m="duel">\u2694 DUEL 2-4</button><button class="btn ${OG.mode === 'tour' ? 'yellow' : 'cream'}" data-ol="mode" data-m="tour">\u{1F3C6} TURNAMEN 2-8</button></div><button class="btn big green" data-ol="start">MULAI!</button>`
+      : `<p class="rs-msg">Mode: <b>${OG.mode === 'duel' ? 'DUEL' : 'TURNAMEN'}</b> \u00B7 menunggu host memulai...</p>`;
+  } else {
+    if (OG.br) h += bracketHTML(OG.br);
+    if (M && M.q) {
+      const inM = M.ids.includes(me), q = M.q;
+      h += `<p class="rs-q"><b>${M.ids.map((i) => esc(pname(i))).join(' vs ')}</b> \u00B7 ronde ${M.round} \u00B7 ${M.need} kemenangan${inM ? '' : ' \u00B7 kamu menonton'}<br>Disk ${q.dead + 1} hancur! Isi XOR-nya paling cepat, atau rusakkan disk lawan!</p>
+        <div class="mini-bar rs-time"><b id="olTime" style="width:${Math.max(0, M.left / 25 * 100)}%"></b></div>`;
+      h += q.disks.map((d, i) => i === q.dead
+        ? `<div class="rs-row dead"><div class="rs-lbl">Disk ${i + 1} \u{1F4A5}<small>HANCUR</small></div><div class="rs-bits">${'<b class="qm">?</b>'.repeat(8)}</div></div>`
+        : `<div class="rs-row ${d.par ? 'par' : ''}"><div class="rs-lbl">Disk ${i + 1}<small>${d.par ? 'PARITY' : 'DATA "' + String.fromCharCode(d.v) + '"'}</small></div><div class="rs-bits">${[...bin8(d.v)].map((c) => `<b>${c}</b>`).join('')}</div></div>`).join('');
+      h += `<div class="ol-cards">` + M.ids.map((id) => {
+        const mine = id === me, stun = (M.stunL || {})[id] > 0, st = '\u2B50'.repeat(M.wins[id]) + '\u2606'.repeat(Math.max(0, M.need - M.wins[id]));
+        if (mine) {
+          const b = M.bits[me] || Array(8).fill(0), v = parseInt(b.join(''), 2);
+          return `<div class="du-p p0 ${stun ? 'stun' : ''}"><div class="du-ph"><b>${esc(pname(id))} (KAMU)</b><span>${st}</span></div><div class="rs-bits">${b.map((x, n) => `<button class="rs-bit ${x ? 'on' : ''}" data-ol="bit" data-n="${n}">${x}<kbd>${KEYLBL[0][n]}</kbd></button>`).join('')}</div><div class="rs-prev">${stun ? '\u{1F635} STUN!' : hex2(v) + ' = ' + v}</div><button class="btn blue" data-ol="submit" ${OG.phase !== 'play' ? 'disabled' : ''}>\u2714 KIRIM (SPASI)</button></div>`;
+        }
+        const cd = (M.cdL || {})[me] || 0, pr = (M.prog || {})[id] || 0;
+        return `<div class="du-p p1 ${stun ? 'stun' : ''}"><div class="du-ph"><b>${esc(pname(id))}</b><span>${st}</span></div><div class="prog"><b style="width:${pr / 8 * 100}%"></b></div><div class="rs-prev">${stun ? '\u{1F635} STUN!' : 'progres ' + pr + '/8 bit benar'}</div>${inM ? `<button class="btn orange" data-ol="atk" data-to="${id}" ${cd > 0 || OG.phase !== 'play' ? 'disabled' : ''}>\u{1F4A5} RUSAKKAN DISK${cd > 0 ? ' (' + Math.ceil(cd / 1000) + 's)' : ''}</button>` : ''}</div>`;
+      }).join('') + `</div><div class="rs-msg">${esc(M.msg || '')}</div>`;
+    }
+    if (OG.phase === 'over') {
+      h += `<div class="rm-champ">\u{1F3C6} ${esc(pname(OG.champ))} JUARA!</div>` + (isH ? '<button class="btn big green" data-ol="lobby">KEMBALI KE LOBI</button>' : '<p class="rs-msg">Menunggu host...</p>');
+    }
+  }
+  $('#rmBody').innerHTML = h;
+  const cnt = $('#olCount'); cnt.hidden = OG.phase !== 'count';
+  if (!cnt.hidden) { cnt.textContent = OG.cnt; cnt.style.animation = 'none'; void cnt.offsetWidth; cnt.style.animation = ''; beep(440, .1); }
+  const e = OG.evt;
+  if (e && e.n !== lastEvt) {
+    lastEvt = e.n;
+    if (e.k === 'hit') { burst($('#rmBody'), '\u{1F4A5}', 8); if (e.to === me) { alarm(); sfx.fail(); floatText('DISKMU RUSAK!', $('#rmBody'), '#e04b3a'); } else sfx.ok(); }
+    else if (e.k === 'win') { if (e.to === me) { sfx.win(); burst($('#rmBody'), '\u2B50', 12); } else sfx.ok(); }
+    else if (e.k === 'wrong' && e.to === me) sfx.fail();
+  }
+  if (OG.phase === 'over' && lastPhase !== 'over') { sfx.win(); confetti(); }
+  lastPhase = OG.phase;
+}
+function olInit() {
+  $('#btnOnline').onclick = olOpen; $('#olCancel').onclick = () => ($('#ovOnline').hidden = true);
+  $('#olCreate').onclick = olCreate; $('#olJoin').onclick = olJoin; $('#rmLeave').onclick = () => olLeave();
+  $('#olCode').addEventListener('input', (e) => (e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '')));
+  const send = () => { const t = $('#chatIn').value.trim(); if (t) { act({ t: 'chat', text: t }); $('#chatIn').value = ''; } };
+  $('#chatSend').onclick = send; $('#chatIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') send(); });
+  $('#rmBody').addEventListener('pointerdown', (e) => {   // pointerdown: tetap responsif walau layar di-render ulang
+    const b = e.target.closest('[data-ol]'); if (!b || b.disabled) return; e.preventDefault();
+    const k = b.dataset.ol;
+    if (k === 'bit') act({ t: 'toggle', n: +b.dataset.n }); else if (k === 'submit') act({ t: 'submit' });
+    else if (k === 'atk') act({ t: 'attack', to: b.dataset.to }); else if (k === 'mode') act({ t: 'mode', m: b.dataset.m });
+    else if (k === 'start') act({ t: 'start' }); else if (k === 'lobby') act({ t: 'lobby' });
+    else olInvite(k);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (!OG || !$('#roomScreen').classList.contains('active') || e.repeat || document.activeElement.tagName === 'INPUT') return;
+    const n = KEYS[0].indexOf(e.code);
+    if (n >= 0) { e.preventDefault(); act({ t: 'toggle', n }); } else if (e.code === 'Space') { e.preventDefault(); act({ t: 'submit' }); }
+  });
+  const room = new URLSearchParams(location.search).get('room');   // link undangan: ?room=KODE
+  if (room) { olOpen(); $('#olCode').value = room.toUpperCase().slice(0, 4); $('#olName').focus(); }
 }
 
 document.addEventListener('DOMContentLoaded', init);

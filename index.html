@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RAID-Shield</title>
+<title>RAID-Shield | Simulator RAID &amp; Pemulihan Data</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@500;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -49,10 +49,11 @@
   <div class="win main-win">
     <div class="titlebar yellow"><i></i><i></i><i></i><span>RAID-SHIELD.EXE</span></div>
     <div class="main-body">
-      <h1 class="logo">RAID-SHIELD</h1>
+      <h1 class="logo">RAID-Shield</h1>
       <div class="tagline">Bertahan 30 Hari sebagai SysAdmin</div>
       <div class="loadrow"><small>loading</small><div class="bar wide"><b></b></div></div>
       <button class="btn big blue" id="btnStart">MULAI GAME</button>
+      <button class="btn big green" id="btnOnline">🌐 MABAR ONLINE (ROOM)</button>
       <div class="mode-grid">
         <button class="btn mint" id="btnRescue" title="Latihan XOR parity RAID 5">🧩 XOR RESCUE<small>solo</small></button>
         <button class="btn pink" id="btnDuel" title="Mabar 2 pemain">👥 XOR DUEL<small>2 pemain</small></button>
@@ -236,6 +237,37 @@
   </div>
 </div>
 
+<div class="overlay" id="ovOnline" hidden>
+  <div class="win modal small">
+    <div class="titlebar mint"><i></i><i></i><i></i><span>MABAR_ONLINE.EXE</span></div>
+    <div class="modal-body">
+      <h2>MABAR ONLINE</h2>
+      <input class="tour-in" id="olName" maxlength="12" placeholder="Nama kamu" autocomplete="off">
+      <button class="btn big blue" id="olCreate">➕ BUAT ROOM BARU</button>
+      <p class="set-label">atau gabung dengan kode dari temanmu</p>
+      <input class="tour-in" id="olCode" maxlength="4" placeholder="KODE 4 HURUF" autocomplete="off" style="text-transform:uppercase">
+      <button class="btn big yellow" id="olJoin">🚀 GABUNG ROOM</button>
+      <p class="ol-status" id="olStatus"></p>
+      <button class="btn cream" id="olCancel">BATAL</button>
+    </div>
+  </div>
+</div>
+<section id="roomScreen" class="screen">
+  <header class="topbar">
+    <div class="brand"><div class="brand-icon"><svg><use href="#dino"/></svg></div><h2>Mabar</h2></div>
+    <div class="chip yellow">ROOM <span id="rmCode">----</span></div>
+    <div class="spacer"></div>
+    <button class="btn small purple" id="rmLeave">KELUAR</button>
+  </header>
+  <main class="rm-wrap">
+    <div class="win"><div class="titlebar mint"><i></i><i></i><i></i><span>ARENA.EXE</span></div><div class="rs-body" id="rmBody"></div></div>
+    <div class="win"><div class="titlebar pink"><i></i><i></i><i></i><span>CHAT_ROOM.EXE</span></div>
+      <div class="chat"><div id="chatLog" class="chat-log"></div>
+        <div class="chat-in"><input id="chatIn" maxlength="120" placeholder="Ketik pesan..." autocomplete="off"><button class="btn small green" id="chatSend">KIRIM</button></div></div></div>
+  </main>
+  <div class="du-count" id="olCount" hidden></div>
+</section>
+
 <div class="overlay" id="ovHelp" hidden>
   <div class="win modal help">
     <div class="titlebar yellow"><i></i><i></i><i></i><span>CARA_BERMAIN.EXE</span></div>
@@ -335,6 +367,7 @@
 </div>
 
 <div id="confetti"></div>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

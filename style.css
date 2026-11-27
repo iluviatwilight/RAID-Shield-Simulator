@@ -383,6 +383,7 @@ body.alarm::after{content:"";position:fixed;inset:0;box-shadow:inset 0 0 120px 3
 .titlebar{font-size:9px;letter-spacing:0;padding:9px 12px}.titlebar small{font-size:8px}
 .tag{font-size:8px;padding:5px 10px;line-height:1.3}
 .btn{font-weight:800;letter-spacing:.3px}
+
 .screen.active{animation:enter .45s ease-out}
 @keyframes enter{from{opacity:0;transform:translateY(16px)}}
 .logo span{display:inline-block;animation:wave 1.8s ease-in-out infinite}
@@ -399,6 +400,7 @@ body.alarm::after{content:"";position:fixed;inset:0;box-shadow:inset 0 0 120px 3
 .particle{position:fixed;z-index:70;pointer-events:none;font-size:20px;animation:fly .9s ease-out forwards}
 @keyframes fly{from{transform:translate(-50%,-50%) scale(.6)}to{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.3);opacity:0}}
 .rs-time.low{animation:pulse .5s ease-in-out infinite}
+
 .du-players{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .du-p{border:3px solid #111;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;box-shadow:4px 4px 0 #111;color:#111}
 .du-p.p0{background:#dfe3ff}.du-p.p1{background:#fde1ee}
@@ -412,6 +414,7 @@ body.alarm::after{content:"";position:fixed;inset:0;box-shadow:inset 0 0 120px 3
 .du-count[hidden]{display:none}
 @keyframes zoom{from{transform:scale(2.5);opacity:0}35%{opacity:1}to{transform:scale(1)}}
 @media(max-width:700px){.du-players{grid-template-columns:1fr}.rs-bit kbd{display:none}}
+
 
 .tour-in{width:100%;border:3px solid #111;border-radius:10px;padding:10px 12px;margin-bottom:8px;font:700 14px var(--f-mono);background:#fff;color:#111;box-shadow:3px 3px 0 #111}
 .splash-name{text-align:center;font:clamp(12px,2.6vw,20px)/2 var(--f-disp);color:#fff;padding:20px}
@@ -445,3 +448,37 @@ body.alarm::after{content:"";position:fixed;inset:0;box-shadow:inset 0 0 120px 3
 #startScreen{--sy:max(70px,calc(50vh - 250px));padding-top:var(--sy);padding-bottom:10px}
 #startScreen .main-win{margin-top:0}
 #startScreen .dino-deco{top:calc(var(--sy) - 60px)}
+
+.rm-wrap{max-width:900px;margin:8px auto 30px;padding:0 14px;display:grid;gap:14px}
+.rm-code{text-align:center;font:9px var(--f-disp);display:flex;flex-direction:column;gap:8px}
+.rm-code b{font-size:clamp(28px,8vw,48px);letter-spacing:8px;color:var(--ink);text-shadow:3px 3px 0 var(--yellow)}
+.rm-players{display:flex;flex-wrap:wrap;gap:8px}
+.pl{border:3px solid #111;border-radius:999px;padding:5px 14px;background:var(--mint);color:#111;font-weight:800;box-shadow:2px 2px 0 #111}
+.pl.me{background:var(--yellow)}
+.rm-champ{text-align:center;font:clamp(14px,3.6vw,22px)/1.5 var(--f-disp);padding:14px;background:var(--yellow);color:#111;border:3px solid #111;border-radius:12px;box-shadow:4px 4px 0 #111;animation:zoom .6s ease-out}
+.ol-status{min-height:20px;font-weight:700;font-size:13px}.ol-status.bad{color:var(--red)}
+.ol-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.prog{height:14px;border:3px solid #111;border-radius:8px;background:#fff;overflow:hidden}.prog b{display:block;height:100%;background:var(--orange);transition:width .2s}
+.chat{display:flex;flex-direction:column}
+.chat-log{height:160px;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.cm b{color:var(--blue)}.cm.sys{opacity:.65;font-style:italic}
+.chat-in{display:flex;gap:8px;padding:10px 14px;border-top:3px solid #111}
+.chat-in input{flex:1;min-width:0;border:3px solid #111;border-radius:10px;padding:8px 10px;font:600 14px var(--f-ui);background:#fff;color:#111}
+/* bracket meniru desain Liga: navy + pola berlian emas, kotak kuning, garis putus-putus */
+.br-wrap{overflow-x:auto;border:3px solid #111;border-radius:14px;color:#fff;background:repeating-linear-gradient(45deg,rgba(255,214,10,.1) 0 2px,transparent 2px 46px),repeating-linear-gradient(-45deg,rgba(255,214,10,.1) 0 2px,transparent 2px 46px),#0b0e33}
+.br-head{display:flex;justify-content:space-between;align-items:flex-start;padding:14px 18px 0;min-width:640px}
+.br-title{font:italic 900 clamp(20px,3.4vw,30px)/1 var(--f-ui);color:#ffd60a;text-shadow:3px 3px 0 #555;border-bottom:5px solid #e8203a;padding-bottom:8px}
+.br-liga{font:11px var(--f-disp);letter-spacing:2px;margin-top:6px}
+.bracket{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px;min-width:640px}
+.half{display:flex;align-items:stretch;gap:22px;flex:1}.half.rev{flex-direction:row-reverse}
+.bcol{display:flex;flex-direction:column;justify-content:space-around;gap:16px;flex:1}
+.pair{display:flex;flex-direction:column;gap:8px;padding:0 12px 0 0;border:2px dashed #fff;border-left:0;border-radius:0 14px 14px 0;justify-content:center}
+.half.rev .pair{padding:0 0 0 12px;border:2px dashed #fff;border-right:0;border-radius:14px 0 0 14px}
+.bx{background:#ffd60a;color:#111;border-radius:12px;padding:8px 10px;font:800 13px var(--f-ui);text-align:center;min-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bx.bye{opacity:.35}.bx.champ{background:#fff;margin-top:8px}
+.pair.live{animation:glow .8s ease-in-out infinite alternate}
+@keyframes glow{to{box-shadow:0 0 16px 3px #e8203a;border-color:#e8203a}}
+.fincol{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:110px}
+.finbadge{background:#e8203a;color:#fff;border-radius:999px;padding:4px 18px;font:800 12px var(--f-ui)}
+.finbadge.live{animation:pulse .6s infinite}
+@media(max-width:560px){.rm-code b{letter-spacing:4px}}
